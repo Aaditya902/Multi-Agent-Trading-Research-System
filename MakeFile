@@ -1,0 +1,142 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Multi-Agent Indian Stock Research Platform — Makefile
+# Usage: make <target>
+# ─────────────────────────────────────────────────────────────────────────────
+
+PYTHON     := python
+PIP        := pip
+VENV       := .venv
+VENV_BIN   := $(VENV)/bin
+APP_PORT   := 8000
+FRONTEND_PORT := 8501
+
+.PHONY: help install setup run frontend test lint clean docker docker-build \
+        docker-up docker-down docker-logs reset-db
+
+# ── Default target ────────────────────────────────────────────────────────────
+help:
+	@echo ""
+	@echo "  Indian Stock Research Platform — Available Commands"
+	@echo "  ──────────────────────────────────────────────────"
+	@echo "  make install      Install all Python dependencies"
+	@echo "  make setup        Full first-time setup (venv + install + .env check)"
+	@echo "  make run          Start the FastAPI backend (port $(APP_PORT))"
+	@echo "  make frontend     Start the Streamlit frontend (port $(FRONTEND_PORT))"
+	@echo "  make test         Run the pytest test suite"
+	@echo "  make lint         Run ruff linter"
+	@echo "  make clean        Remove caches and temp files"
+	@echo "  make docker-build Build Docker image"
+	@echo "  make docker-up    Start all services via docker-compose"
+	@echo "  make docker-down  Stop all docker-compose services"
+	@echo "  make docker-logs  Tail docker-compose logs"
+	@echo "  make reset-db     Delete the local SQLite database"
+	@echo ""
+
+# ── Installation ──────────────────────────────────────────────────────────────
+install:
+	$(PIP) install --upgrade pip
+	$(PIP) install -r requirements.txt
+
+setup:
+	@echo "→ Creating virtual environment..."
+	$(PYTHON) -m venv $(VENV)
+	@echo "→ Installing dependencies..."
+	$(VENV_BIN)/pip install --upgrade pip
+	$(VENV_BIN)/pip install -r requirements.txt
+	@echo "→ Checking .env file..."
+	@if [ ! -f .env ]; then \
+		cp .env.example .env; \
+		echo "  .env created from .env.example — add your GEMINI_API_KEY"; \
+	else \
+		echo "  .env already exists."; \
+	fi
+	@echo ""
+	@echo "  Setup complete! Next steps:"
+	@echo "  1. Edit .env and set GEMINI_API_KEY"
+	@echo "  2. source $(VENV)/bin/activate"
+	@echo "  3. make run"
+	@echo ""
+
+# ── Running ───────────────────────────────────────────────────────────────────
+run:
+	@echo "→ Starting FastAPI backend on port $(APP_PORT)..."
+	$(PYTHON) app.py
+
+frontend:
+	@echo "→ Starting Streamlit frontend on port $(FRONTEND_PORT)..."
+	streamlit run frontend/app.py \
+		--server.port=$(FRONTEND_PORT) \
+		--server.address=0.0.0.0 \
+		--browser.gatherUsageStats=false
+
+# Run both backend and frontend (requires GNU make + bash)
+dev:
+	@echo "→ Starting backend + frontend in background..."
+	$(PYTHON) app.py &
+	sleep 3
+	streamlit run frontend/app.py --server.port=$(FRONTEND_PORT)
+
+# ── Testing ───────────────────────────────────────────────────────────────────
+test:
+	pytest tests/ -v --tb=short
+
+test-cov:
+	pytest tests/ -v --tb=short --cov=. --cov-report=term-missing --cov-report=html
+	@echo "Coverage report: htmlcov/index.html"
+
+# ── Linting ───────────────────────────────────────────────────────────────────
+lint:
+	@command -v ruff >/dev/null 2>&1 || pip install ruff
+	ruff check . --select=E,F,W --ignore=E501
+	@echo "Lint complete."
+
+format:
+	@command -v ruff >/dev/null 2>&1 || pip install ruff
+	ruff format .
+
+# ── Cleanup ───────────────────────────────────────────────────────────────────
+clean:
+	find . -type d -name "__pycache__" -exec rm -rf {} + 2>/dev/null || true
+	find . -type f -name "*.pyc" -delete 2>/dev/null || true
+	find . -type f -name "*.pyo" -delete 2>/dev/null || true
+	rm -rf .pytest_cache/ .coverage htmlcov/ dist/ build/ *.egg-info/
+	@echo "Cleaned."
+
+reset-db:
+	@echo "→ Deleting local SQLite database..."
+	rm -f stock_platform.db
+	@echo "  Database deleted. It will be recreated on next startup."
+
+# ── Docker ────────────────────────────────────────────────────────────────────
+docker-build:
+	docker build -t indian-stock-platform:latest .
+
+docker-up:
+	@if [ ! -f .env ]; then \
+		echo "ERROR: .env file not found. Run: cp .env.example .env"; \
+		exit 1; \
+	fi
+	docker compose up -d
+	@echo ""
+	@echo "  Services started:"
+	@echo "  Backend  → http://localhost:$(APP_PORT)"
+	@echo "  API Docs → http://localhost:$(APP_PORT)/docs"
+	@echo "  Frontend → http://localhost:$(FRONTEND_PORT)"
+	@echo ""
+	@echo "  Logs: make docker-logs"
+	@echo "  Stop: make docker-down"
+
+docker-down:
+	docker compose down
+	@echo "Services stopped."
+
+docker-logs:
+	docker compose logs -f --tail=100
+
+docker-restart:
+	docker compose restart
+
+docker-clean:
+	docker compose down -v --remove-orphans
+	docker rmi indian-stock-platform:latest 2>/dev/null || true
+	@echo "Docker resources removed."
