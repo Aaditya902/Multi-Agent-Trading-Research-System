@@ -44,7 +44,7 @@ Orchestrator (LangGraph StateGraph)
 
 | Layer | Technology |
 |---|---|
-| LLM | Gemini 1.5 Flash (free tier) |
+| LLM | Gemini 2.5 Flash (free tier) |
 | Agent Orchestration | LangGraph StateGraph |
 | Sentiment Analysis | FinBERT (ProsusAI/finbert) |
 | Financial Data | yfinance |
@@ -97,8 +97,6 @@ Edit `.env` and add your key:
 ```env
 GEMINI_API_KEY=your_actual_gemini_api_key_here
 ```
-
-Get a free key at → **https://aistudio.google.com/app/apikey**
 
 ### 5. Start the FastAPI backend
 
@@ -189,90 +187,6 @@ indian_stock_platform/
 └── README.md                   # This file
 ```
 
----
-
-
-### POST `/analyze`
-
-Run full 6-agent parallel analysis for a single stock.
-
-```bash
-curl -X POST http://localhost:8000/api/v1/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"ticker": "TCS"}'
-```
-
-
-```bash
-curl -X POST http://localhost:8000/api/v1/portfolio/analyze \
-  -H "Content-Type: application/json" \
-  -d '{"stocks": ["TCS", "RELIANCE", "HDFCBANK", "SUNPHARMA", "ITC"]}'
-```
-
-```json
-{
-  "stocks": ["TCS", "RELIANCE", "HDFCBANK", "SUNPHARMA", "ITC"],
-  "sector_allocation": {"Information Technology": 20.0, "Energy": 20.0, "...": "..."},
-  "diversification_score": 72.5,
-  "risk_score": 41.0,
-  "concentration_risk": "Low",
-  "suggestions": ["Portfolio appears reasonably balanced..."],
-  "created_at": "2025-01-15T10:30:00Z"
-}
-```
-
-### GET `/market-brief`
-
-Daily Indian market brief — cached once per calendar day.
-
-```bash
-curl http://localhost:8000/api/v1/market-brief
-```
-
-### GET `/history`
-
-List recent analysis requests.
-
-```bash
-curl "http://localhost:8000/api/v1/history?limit=10"
-```
-
-### GET `/history/{ticker}`
-
-History for a specific ticker.
-
-```bash
-curl http://localhost:8000/api/v1/history/TCS
-```
-
-### GET `/report/{request_id}`
-
-Retrieve a previously generated report.
-
-```bash
-curl http://localhost:8000/api/v1/report/1
-```
-
----
-
-## 🎯 Supported Tickers
-
-The platform supports all major NSE-listed stocks. Common examples:
-
-| Sector | Tickers |
-|---|---|
-| IT | TCS, INFY, HCLTECH, WIPRO, TECHM |
-| Banking | HDFCBANK, ICICIBANK, AXISBANK, SBIN, KOTAKBANK |
-| Energy | RELIANCE, ONGC, BPCL, ADANIENT, TATAPOWER |
-| Consumer | HINDUNILVR, ITC, NESTLEIND, BRITANNIA, DABUR |
-| Auto | TATAMOTORS, MARUTI, M&M, BAJAJAUTO, EICHERMOT |
-| Pharma | SUNPHARMA, DRREDDY, CIPLA, DIVISLAB, LUPIN |
-| Metals | TATASTEEL, JSWSTEEL, HINDALCO, SAIL, VEDL |
-| New-Age | ZOMATO, NYKAA, PAYTM, IRCTC, DELHIVERY |
-
-Any NSE ticker not in this list is also supported — just enter the symbol and it appends `.NS` automatically.
-
----
 
 ## 🤖 Agent Details
 
@@ -330,7 +244,7 @@ All configuration is via environment variables in `.env`:
 GEMINI_API_KEY=your_key_here
 
 # Optional — defaults shown
-GEMINI_MODEL=gemini-1.5-flash
+GEMINI_MODEL=gemini-2.5-flash
 APP_HOST=0.0.0.0
 APP_PORT=8000
 APP_ENV=development
@@ -354,74 +268,3 @@ SQLite database (`stock_platform.db`) with 4 tables:
 | `market_briefs` | Daily market briefs (one per calendar day) |
 
 ---
-
-## 📊 Logging
-
-Structured logging via **loguru**:
-
-- **Development** (`APP_ENV=development`): coloured console output
-- **Production** (`APP_ENV=production`): JSON to console + rotating file (`logs/app.log`)
-
-Log levels per module are tagged with agent name for easy filtering:
-
-```
-[Graph:NewsNode]      → news agent execution
-[Graph:ReportNode]    → report generation
-[API /analyze]        → endpoint request/response
-[SectorAgent]         → sector analysis steps
-```
-
----
-
-## 🔧 Troubleshooting
-
-**FinBERT download is slow on first run**
-
-FinBERT (~440 MB) downloads from HuggingFace on first use. Subsequent runs use the local cache (`~/.cache/huggingface`). The keyword fallback activates automatically if the download fails.
-
-**yfinance returns empty data**
-
-Some tickers may return empty data during market hours due to rate limiting. The platform retries 3 times with exponential backoff. If data is still unavailable, the agent returns a neutral/unknown output and the report continues with available data.
-
-**Gemini rate limit errors**
-
-The free tier allows 15 requests/minute. On `/compare`, two analyses run in parallel followed by a comparison call — this uses 3 Gemini calls in quick succession. If you hit rate limits, wait 60 seconds and retry.
-
-**Backend connection refused in Streamlit**
-
-Make sure the FastAPI backend is running before opening Streamlit:
-```bash
-# Terminal 1
-python app.py
-
-# Terminal 2
-streamlit run frontend/app.py
-```
-
-**`ModuleNotFoundError` on startup**
-
-Ensure you activated the virtual environment:
-```bash
-source .venv/bin/activate   # Linux/macOS
-.venv\Scripts\Activate.ps1  # Windows
-```
-
----
-
-## 📝 Disclaimer
-
-This platform is for **informational and educational purposes only**. It does not constitute financial advice. Always conduct your own research and consult a qualified financial advisor before making investment decisions. Past performance is not indicative of future results.
-
----
-
-## 🧱 Built With
-
-- [Google Gemini](https://aistudio.google.com/) — LLM for report generation
-- [LangGraph](https://github.com/langchain-ai/langgraph) — Multi-agent orchestration
-- [FinBERT](https://huggingface.co/ProsusAI/finbert) — Financial sentiment analysis
-- [yfinance](https://github.com/ranaroussi/yfinance) — Yahoo Finance data
-- [pandas-ta](https://github.com/twopirllc/pandas-ta) — Technical indicators
-- [FastAPI](https://fastapi.tiangolo.com/) — Backend API
-- [Streamlit](https://streamlit.io/) — Frontend UI
-- [SQLAlchemy](https://www.sqlalchemy.org/) — Database ORM
-- [fpdf2](https://py-fpdf2.readthedocs.io/) — PDF generation
