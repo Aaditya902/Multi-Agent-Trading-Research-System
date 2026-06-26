@@ -1,6 +1,6 @@
 # 📈 Multi-Agent Indian Stock Research & Portfolio Intelligence Platform
 
-An AI-powered, institutional-quality equity research platform for Indian stocks listed on **NSE/BSE**. Six specialist agents run in parallel, powered by **Gemini**, orchestrated by **LangGraph**, with sentiment analysis via **FinBERT** — all completely free to run.
+An AI-powered, institutional-quality equity research platform for Indian stocks listed on **NSE/BSE**. Six specialist agents run in parallel, powered by **Gemini**, orchestrated by **LangGraph**, with sentiment analysis via **FinBERT** all completely free to run.
 
 ---
 
@@ -136,7 +136,7 @@ indian_stock_platform/
 ├── graph/                      # LangGraph orchestration
 │   ├── state.py                # Typed StockResearchState (Pydantic)
 │   ├── nodes.py                # Node functions with error isolation
-│   └── workflow.py             # StateGraph — parallel fan-out/fan-in
+│   └── workflow.py             # StateGraph parallel fan-out/fan-in
 │
 ├── tools/                      # Data fetching utilities
 │   ├── yfinance_tool.py        # yfinance wrappers with retry
@@ -200,7 +200,7 @@ indian_stock_platform/
 - Fetches 15 key metrics via yfinance (P/E, ROE, margins, FCF, beta, etc.)
 - Scores financial health across 5 dimensions (profitability, ROE, debt, FCF, growth)
 - Compares P/E against sector benchmarks (IT: 28x, Banking: 20x, FMCG: 45x, etc.)
-- No Gemini call needed — pure rule-based evaluation
+- No Gemini call needed pure rule-based evaluation
 
 ### Sentiment Agent
 - Runs FinBERT (ProsusAI/finbert) over all news headlines
@@ -266,5 +266,3 @@ SQLite database (`stock_platform.db`) with 4 tables:
 | `analysis_reports` | Full report markdown + all agent outputs as JSON |
 | `portfolio_analyses` | Portfolio intelligence results |
 | `market_briefs` | Daily market briefs (one per calendar day) |
-
----
